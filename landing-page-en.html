@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EIDEN · Free Discovery Call | Business Architecture</title>
+<meta name="description" content="You don't have a strategy problem. You have a structure problem. Book a free 30-minute call with EIDEN, Morocco's first Business Architecture firm.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,400..600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+   * EIDEN · Lead-gen landing page (English master)
+   * Standalone, no framework. Edit copy directly in the markup.
+   * Design tokens per Build Doc §04 (Ink / Paper / Brass / Blueprint).
+   * ============================================================ */
+  :root{
+    --ink:#15141b; --ink-70:rgba(21,20,27,.7); --ink-55:rgba(21,20,27,.55);
+    --ink-40:rgba(21,20,27,.38); --ink-15:rgba(21,20,27,.13);
+    --paper:#f7f3ea; --paper-dim:#eee8d9; --paper-card:#fffdf8;
+    --brass:#c8922f; --brass-dark:#9c701c; --blueprint:#3c5a73; --good:#4c6e52;
+    --radius:4px; --maxw:1180px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--paper); color:var(--ink); font-family:'Inter',sans-serif; font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased;}
+  h1,h2,h3,h4{font-family:'Fraunces',serif; margin:0; font-weight:600; letter-spacing:-0.02em;}
+  h1 em,h2 em{font-style:italic; color:var(--brass);}
+  p{margin:0 0 14px;} ul{margin:0; padding:0;} a{color:inherit;}
+  .container{max-width:var(--maxw); margin:0 auto; padding:0 32px;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .eyebrow{font-family:'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.12em; font-size:11.5px; color:var(--blueprint); font-weight:500; display:flex; align-items:center; gap:8px;}
+  .eyebrow::before{content:""; width:14px; height:1px; background:var(--blueprint); display:inline-block;}
+  .section{padding:88px 0; border-bottom:1px solid var(--ink-15);}
+  .section.dark{background:var(--ink); color:var(--paper); border-bottom:none;}
+  .section.dark .eyebrow{color:#cdbf9b;} .section.dark .eyebrow::before{background:#cdbf9b;}
+  .section.dark h2{color:#fdfbf5;}
+  .sec-head{max-width:760px; margin-bottom:44px;}
+  .sec-head h2{font-size:clamp(28px,3.6vw,42px); line-height:1.06; margin-top:14px;}
+
+  /* CTA */
+  .btn-cta{display:inline-flex; align-items:center; gap:10px; background:var(--brass); color:#1c1306; font-weight:700; font-size:15px; padding:15px 30px; border-radius:3px; text-decoration:none; border:none; cursor:pointer;}
+  .btn-cta:hover{background:var(--brass-dark); color:#fff;}
+  .micro-trust{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--ink-55); margin-top:12px;}
+  .dark .micro-trust{color:#a9a08a;}
+
+  /* HEADER */
+  header{position:sticky; top:0; z-index:50; background:rgba(247,243,234,.92); backdrop-filter:blur(6px); border-bottom:1px solid var(--ink-15);}
+  header .container{display:flex; align-items:center; justify-content:space-between; height:64px;}
+  .brandmark{font-family:'Fraunces',serif; font-weight:600; font-size:18px; letter-spacing:.01em;}
+  .brandmark span{color:var(--brass-dark);}
+  .call-link{font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--ink-70); text-decoration:none; display:flex; align-items:center; gap:8px;}
+  .call-link:hover{color:var(--ink);}
+
+  /* HERO */
+  #hero{background:var(--ink); color:var(--paper); padding:120px 0 96px; position:relative; overflow:hidden;}
+  #hero .grid-bg{position:absolute; inset:0; opacity:.07; background-image:linear-gradient(var(--paper) 1px, transparent 1px), linear-gradient(90deg, var(--paper) 1px, transparent 1px); background-size:42px 42px;}
+  #hero .container{position:relative;}
+  #hero .eyebrow{color:#cdbf9b;} #hero .eyebrow::before{background:#cdbf9b;}
+  #hero h1{font-size:clamp(38px,5.6vw,70px); line-height:1.04; margin:24px 0 26px; max-width:18ch; color:#fdfbf5;}
+  #hero .lead{font-size:19px; color:#cfc8b4; max-width:680px;}
+  #hero .cta-row{margin-top:38px;}
+
+  /* PROBLEM */
+  .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:20px;}
+  .grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:20px;}
+  .grid-4{display:grid; grid-template-columns:repeat(4,1fr); gap:18px;}
+  .card{background:var(--paper-card); border:1px solid var(--ink-15); border-radius:var(--radius); padding:26px;}
+  .card .num{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-40);}
+  .card p.symptom{font-size:17px; color:var(--ink); margin:10px 0 0;}
+
+  /* REFRAME */
+  #reframe{background:var(--ink); color:var(--paper);}
+  #reframe .lead{font-size:18px; color:#cfc8b4; max-width:820px; margin-top:18px;}
+  .stat-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.14); border-radius:var(--radius); overflow:hidden; margin-top:48px;}
+  .stat{background:var(--ink); padding:24px;}
+  .stat .v{font-family:'Fraunces',serif; font-size:44px; color:var(--brass); line-height:1;}
+  .stat .l{font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:#a9a08a; margin-top:10px;}
+
+  /* PROOF BAR */
+  #proof{padding:54px 0; text-align:center;}
+  #proof .label{font-family:'IBM Plex Mono',monospace; font-size:11.5px; text-transform:uppercase; letter-spacing:.12em; color:var(--ink-55); margin-bottom:28px;}
+  .logo-strip{display:flex; flex-wrap:wrap; justify-content:center; gap:18px 40px;}
+  .logo-strip span{font-family:'Fraunces',serif; font-size:21px; color:var(--ink-40);}
+  .logo-strip span:hover{color:var(--ink);}
+
+  /* HOW IT WORKS */
+  .step .tag{display:inline-block; font-family:'IBM Plex Mono',monospace; font-size:12px; background:var(--ink); color:var(--paper); padding:4px 9px; border-radius:3px;}
+  .step h4{font-family:'Inter',sans-serif; font-weight:700; font-size:17px; margin:16px 0 6px;}
+  .step p{font-size:15px; color:var(--ink-70); margin:0;}
+  .cta-center{text-align:center; margin-top:48px;}
+
+  /* TESTIMONIAL */
+  #testimonial{background:var(--ink); color:var(--paper);}
+  .quote{border-left:2px solid var(--brass); padding-left:28px;}
+  .quote blockquote{font-family:'Fraunces',serif; font-style:italic; font-weight:300; font-size:clamp(20px,2.4vw,30px); line-height:1.32; margin:0; color:#fdfbf5;}
+  .quote .who{margin-top:24px; display:flex; align-items:center; gap:14px;}
+  .quote .av{width:44px; height:44px; border-radius:50%; background:var(--brass); color:var(--ink); display:grid; place-items:center; font-family:'Fraunces',serif; font-weight:600;}
+  .quote .who .name{font-weight:700;}
+  .quote .who .role{font-family:'IBM Plex Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:#a9a08a;}
+  .founder{background:#1d1c25; border:1px solid rgba(255,255,255,.12); border-radius:var(--radius); padding:26px;}
+  .founder h4{color:#fdfbf5; font-family:'Inter',sans-serif; font-weight:700; font-size:17px;}
+  .founder p{color:#cfc8b4; font-size:15px; margin:14px 0 0;}
+
+  /* FAQ */
+  #faq .container{max-width:820px;}
+  details{border-bottom:1px solid var(--ink-15);}
+  details summary{list-style:none; cursor:pointer; padding:20px 0; font-family:'Fraunces',serif; font-weight:600; font-size:18px; display:flex; justify-content:space-between; align-items:center; gap:16px;}
+  details summary::-webkit-details-marker{display:none;}
+  details summary::after{content:"+"; font-family:'IBM Plex Mono',monospace; color:var(--brass-dark); font-size:22px; flex:none;}
+  details[open] summary::after{content:"–";}
+  details .ans{padding:0 0 22px; color:var(--ink-70); font-size:15.5px; max-width:680px;}
+
+  /* FORM */
+  #lead-form{background:var(--ink); color:var(--paper);}
+  #lead-form .layout{display:grid; grid-template-columns:5fr 7fr; gap:44px; align-items:start;}
+  #lead-form h2{color:#fdfbf5; font-size:clamp(28px,3.6vw,44px); line-height:1.04;}
+  #lead-form .reassure{color:#cfc8b4; max-width:420px; margin-top:18px;}
+  .form-card{background:var(--paper); color:var(--ink); border-radius:10px; padding:34px;}
+  .field{margin-bottom:18px;}
+  .field label{font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-55); display:block; margin-bottom:8px;}
+  .field input{width:100%; background:var(--paper-dim); border:1px solid var(--ink-15); border-radius:var(--radius); padding:13px 14px; font-family:'Inter',sans-serif; font-size:16px; color:var(--ink);}
+  .field input:focus{outline:none; border-color:var(--ink);}
+  .consent{display:flex; gap:10px; align-items:flex-start; font-size:13.5px; color:var(--ink-70); margin:6px 0 20px;}
+  .consent input{margin-top:3px; accent-color:var(--ink);}
+  .form-card .btn-cta{width:100%; justify-content:center;}
+  .form-success{text-align:center; padding:30px 0;}
+  .form-success .tick{width:60px; height:60px; border-radius:50%; background:var(--good); color:#fff; display:grid; place-items:center; margin:0 auto 18px; font-size:28px;}
+
+  /* FOOTER */
+  footer{background:var(--paper); padding:48px 0 40px;}
+  footer .top{display:grid; grid-template-columns:1fr 1.4fr auto; gap:24px; align-items:start;}
+  footer .contact a, footer .contact div{display:block; color:var(--ink-70); text-decoration:none; font-size:14.5px; margin-bottom:8px;}
+  footer .contact a:hover{color:var(--ink);}
+  footer .social{display:flex; gap:18px; font-family:'IBM Plex Mono',monospace; font-size:12px;}
+  footer .social a{color:var(--ink-70); text-decoration:none;} footer .social a:hover{color:var(--ink);}
+  footer .legal{margin-top:32px; padding-top:22px; border-top:1px solid var(--ink-15); display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-40);}
+  footer .legal a{color:var(--ink-40); text-decoration:none;}
+
+  /* STICKY MOBILE CTA */
+  #sticky-cta{position:fixed; left:0; right:0; bottom:0; z-index:80; display:none; padding:12px 16px; background:rgba(247,243,234,.94); backdrop-filter:blur(6px); border-top:1px solid var(--ink-15);}
+  #sticky-cta a{display:flex; justify-content:center; width:100%;}
+
+  @media (max-width:880px){
+    .grid-2,.grid-3,.grid-4,.stat-grid,#lead-form .layout,footer .top{grid-template-columns:1fr;}
+    .stat-grid{grid-template-columns:1fr 1fr;}
+    .section{padding:60px 0;} #hero{padding:96px 0 64px;}
+    .container{padding:0 22px;}
+    .call-link span{display:none;}
+    #sticky-cta.show{display:block;}
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER: no nav, click-to-call only -->
+<header>
+  <div class="container">
+    <div class="brandmark">EIDEN<span>.</span></div>
+    <a class="call-link" href="tel:+212777777428">☎ +212 7 77 77 74 28</a>
+  </div>
+</header>
+
+<!-- HERO: Variant B (authority reframe) -->
+<section id="hero">
+  <div class="grid-bg"></div>
+  <div class="container">
+    <div class="eyebrow">EIDEN · Business Architecture</div>
+    <h1>You don't have a strategy problem. You have a <em>structure</em> problem.</h1>
+    <p class="lead">Book a free 30-minute call with EIDEN, Morocco's first Business Architecture firm, and see exactly where yours is cracking.</p>
+    <div class="cta-row">
+      <a class="btn-cta" href="#lead-form">Book My Free Discovery Call →</a>
+      <div class="micro-trust">Free. 30 minutes. No pitch deck. No commitment.</div>
+    </div>
+  </div>
+</section>
+
+<!-- PROBLEM / AGITATION -->
+<section class="section" id="problem">
+  <div class="container">
+    <div class="sec-head">
+      <div class="eyebrow">The reality</div>
+      <h2>Sound familiar?</h2>
+    </div>
+    <div class="grid-2">
+      <div class="card"><span class="num">01</span><p class="symptom">Some months are great. Some months you can't explain. And nobody on the team can tell you exactly why.</p></div>
+      <div class="card"><span class="num">02</span><p class="symptom">Your operations run on WhatsApp voice notes and group chats, and somehow it's still holding. For now.</p></div>
+      <div class="card"><span class="num">03</span><p class="symptom">You've bought the tools, hired the freelancers, run the ads. Revenue still doesn't move the way it should.</p></div>
+      <div class="card"><span class="num">04</span><p class="symptom">The brand looks good from the outside. Underneath, it's held together with tape.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- REFRAME + STATS -->
+<section class="section dark" id="reframe">
+  <div class="container">
+    <div class="eyebrow">The reframe</div>
+    <h2 style="font-size:clamp(28px,3.8vw,46px); line-height:1.05; margin-top:14px; max-width:14ch;">Not a strategy problem. A <em>structure</em> problem.</h2>
+    <p class="lead">Most consultants sell you a plan. EIDEN designs the architecture your business actually runs on: the systems and decisions underneath the plan. We're the first firm doing this work in Morocco. Founded in 2025. Already behind the systems running 27+ businesses, with an average 43% efficiency gain inside six months.</p>
+    <div class="stat-grid">
+      <div class="stat"><div class="v">2025</div><div class="l">Founded</div></div>
+      <div class="stat"><div class="v">27+</div><div class="l">Businesses architected</div></div>
+      <div class="stat"><div class="v">43%</div><div class="l">Avg. efficiency gain</div></div>
+      <div class="stat"><div class="v">4</div><div class="l">Continents served</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- PROOF BAR -->
+<section id="proof">
+  <div class="container">
+    <div class="label">Trusted by</div>
+    <div class="logo-strip">
+      <span>Lunja Village</span><span>DMC</span><span>Bo Passage</span>
+      <span>Madaef</span><span>Anisal Cabinet</span><span>Educazenkids</span>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section" id="how">
+  <div class="container">
+    <div class="sec-head">
+      <div class="eyebrow">How it works</div>
+      <h2>Three steps. No surprises.</h2>
+    </div>
+    <div class="grid-3">
+      <div class="card step"><span class="tag">01</span><h4>Book your free call</h4><p>Pick a time. Takes two minutes.</p></div>
+      <div class="card step"><span class="tag">02</span><h4>Get on the call</h4><p>30 minutes, no pitch deck. Just you, walking us through your business.</p></div>
+      <div class="card step"><span class="tag">03</span><h4>Walk away with clarity</h4><p>Hire us or don't. Either way, you'll know exactly where to act first.</p></div>
+    </div>
+    <div class="cta-center">
+      <a class="btn-cta" href="#lead-form">Book My Free Discovery Call →</a>
+      <div class="micro-trust">Free. 30 minutes. No pitch deck.</div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIAL + FOUNDER -->
+<section class="section dark" id="testimonial">
+  <div class="container">
+    <div class="grid-2" style="gap:44px; align-items:start;">
+      <div class="quote">
+        <blockquote>"EIDEN didn't deliver a strategy; they rebuilt the system that runs our operations. Six months later, we're managing 35% more workload with the same team. That's not consulting. That's architecture."</blockquote>
+        <div class="who">
+          <div class="av">A</div>
+          <div><div class="name">Amine El Idrissi</div><div class="role">Directeur Général</div></div>
+        </div>
+      </div>
+      <div class="founder">
+        <div class="eyebrow" style="margin-bottom:14px;">The founder</div>
+        <h4>Built by someone who's done this from the inside</h4>
+        <p>Before founding EIDEN, Oualid Laati spent twelve years inside global brands, including Amazon, Orange, Samsung and Renault, in sales, marketing, operations and AI deployment. EIDEN is the firm he wished he could have hired.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="section" id="faq">
+  <div class="container">
+    <div class="sec-head">
+      <div class="eyebrow">FAQ</div>
+      <h2>The last five doubts before the click.</h2>
+    </div>
+    <details open>
+      <summary>Is this actually free?</summary>
+      <div class="ans">Yes. The 30-minute call costs nothing: no card, no catch. If there's a fit for paid work afterward, the smallest engagement starts at 3,000 MAD for a structured diagnostic, and we'll say so plainly. If there isn't a fit, you still walk away with a clearer picture of your business than you had before the call.</div>
+    </details>
+    <details>
+      <summary>Will I get a sales pitch?</summary>
+      <div class="ans">No. It's a direct conversation about your business and where it needs to go: no slides, no pressure to decide anything on the call itself.</div>
+    </details>
+    <details>
+      <summary>What size of business is this for?</summary>
+      <div class="ans">Most of our clients run between roughly 2M and 100M MAD in revenue. Smaller or earlier-stage? We'll still take the call and point you to the right starting point, even if that's not us yet.</div>
+    </details>
+    <details>
+      <summary>How fast will someone get back to me?</summary>
+      <div class="ans">Within 24 hours. A member of the EIDEN team reads every submission personally, and there's no automated reply standing in for a real one.</div>
+    </details>
+    <details>
+      <summary>Do you only work with certain industries?</summary>
+      <div class="ans">No. Current clients span hospitality, operations, retail, education and healthcare. The diagnostic comes first either way, and that's what tells us if there's a real fit.</div>
+    </details>
+  </div>
+</section>
+
+<!-- FINAL CTA + LEAD FORM -->
+<section class="section" id="lead-form">
+  <div class="container">
+    <div class="layout">
+      <div>
+        <div class="eyebrow">Book</div>
+        <h2 style="margin-top:14px;">See exactly where to act <em>first</em>.</h2>
+        <p class="reassure">A member of the EIDEN team reads every brief personally and replies within 24 hours. Free. 30 minutes. No pitch deck.</p>
+      </div>
+      <div class="form-card">
+        <form id="eiden-form" novalidate>
+          <div class="field"><label for="f-name">Full name *</label><input id="f-name" name="name" type="text" required placeholder="Jane Doe"></div>
+          <div class="field"><label for="f-phone">Phone *</label><input id="f-phone" name="phone" type="tel" required placeholder="+212 …"></div>
+          <div class="field"><label for="f-email">Email *</label><input id="f-email" name="email" type="email" required placeholder="you@company.com"></div>
+          <div class="field"><label for="f-company">Business name (optional)</label><input id="f-company" name="company" type="text"></div>
+          <label class="consent"><input type="checkbox" id="f-consent" required> I agree that EIDEN may process my data to contact me, per the <a href="#" style="color:var(--blueprint);">privacy policy</a>.</label>
+          <button class="btn-cta" type="submit">Book My Free Discovery Call →</button>
+          <div class="micro-trust" style="text-align:center;">Free. 30 minutes. No pitch deck. No commitment.</div>
+        </form>
+        <div class="form-success" id="form-success" style="display:none;">
+          <div class="tick">✓</div>
+          <h3>Request received.</h3>
+          <p style="color:var(--ink-70); max-width:340px; margin:10px auto 0;">A member of the EIDEN team reads every brief personally and replies within 24 hours.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="top">
+      <div class="brandmark" style="font-size:22px;">EIDEN<span>.</span></div>
+      <div class="contact">
+        <a href="mailto:contact@eiden-group.com">contact@eiden-group.com</a>
+        <a href="tel:+212777777428">+212 7 77 77 74 28</a>
+        <div>Agadir Bay, Technopole, Agadir, Morocco</div>
+      </div>
+      <div class="social">
+        <a href="https://www.linkedin.com/" target="_blank" rel="noreferrer">LinkedIn</a>
+        <a href="https://www.instagram.com/" target="_blank" rel="noreferrer">Instagram</a>
+      </div>
+    </div>
+    <div class="legal">
+      <div id="year">© EIDEN GROUP · ALL RIGHTS RESERVED</div>
+      <div><a href="#">Privacy</a> &nbsp;·&nbsp; <a href="#">Terms</a></div>
+    </div>
+  </div>
+</footer>
+
+<!-- STICKY MOBILE CTA -->
+<div id="sticky-cta"><a class="btn-cta" href="#lead-form">Book My Free Call →</a></div>
+
+<script>
+  // Year
+  document.getElementById('year').textContent =
+    '© ' + new Date().getFullYear() + ' EIDEN GROUP · ALL RIGHTS RESERVED';
+
+  // Sticky mobile CTA: show after hero, hide once form is in view
+  var sticky = document.getElementById('sticky-cta');
+  var form = document.getElementById('lead-form');
+  window.addEventListener('scroll', function () {
+    var pastHero = window.scrollY > window.innerHeight * 0.85;
+    var formVisible = form.getBoundingClientRect().top < window.innerHeight;
+    sticky.classList.toggle('show', pastHero && !formVisible);
+  }, { passive: true });
+
+  // Lead form: client-side only (wire to CRM / endpoint at build)
+  document.getElementById('eiden-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = document.getElementById('f-name').value.trim();
+    var phone = document.getElementById('f-phone').value.trim();
+    var email = document.getElementById('f-email').value.trim();
+    var consent = document.getElementById('f-consent').checked;
+    var emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+    if (name.split(/\s+/).length < 2 || phone.length < 6 || !emailOk || !consent) {
+      alert('Please complete all required fields and accept the privacy policy.');
+      return;
+    }
+    this.style.display = 'none';
+    document.getElementById('form-success').style.display = 'block';
+  });
+</script>
+</body>
+</html>
