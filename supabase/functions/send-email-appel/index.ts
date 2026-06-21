@@ -1,5 +1,3 @@
-import nodemailer from "nodemailer";
-
 interface Payload {
   name: string;
   phone: string;
@@ -7,17 +5,12 @@ interface Payload {
   company?: string;
 }
 
-const SMTP_HOST = Deno.env.get("SMTP_HOST") || "";
-const SMTP_PORT = parseInt(Deno.env.get("SMTP_PORT") || "587", 10);
-const SMTP_USER = Deno.env.get("SMTP_USER") || "";
-const SMTP_PASS = Deno.env.get("SMTP_PASS") || "";
-const FROM_EMAIL = Deno.env.get("FROM_EMAIL") || "";
-const TO_EMAIL = Deno.env.get("TO_EMAIL") || "";
-
 const corsHeaders = (req: Request) => ({
   "Access-Control-Allow-Origin": "https://appel.eiden-group.com",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": req.headers.get("Access-Control-Request-Headers") || "Content-Type, Authorization, x-client-info, apikey",
+  "Access-Control-Allow-Headers":
+    req.headers.get("Access-Control-Request-Headers") ||
+    "Content-Type, Authorization, x-client-info, apikey",
   "Access-Control-Max-Age": "86400",
 });
 
@@ -36,9 +29,16 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS || !FROM_EMAIL || !TO_EMAIL) {
+    const smtpHost = Deno.env.get("SMTP_HOST");
+    const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465", 10);
+    const smtpUser = Deno.env.get("SMTP_USER");
+    const smtpPass = Deno.env.get("SMTP_PASS");
+    const fromEmail = Deno.env.get("FROM_EMAIL");
+    const toEmail = Deno.env.get("TO_EMAIL");
+
+    if (!smtpHost || !smtpUser || !smtpPass || !fromEmail || !toEmail) {
       throw new Error(
-        "Missing SMTP configuration. Set SMTP_HOST, SMTP_USER, SMTP_PASS, FROM_EMAIL, TO_EMAIL in Supabase secrets."
+        "Missing SMTP configuration. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, FROM_EMAIL, TO_EMAIL in Supabase secrets."
       );
     }
 
@@ -54,16 +54,13 @@ Deno.serve(async (req: Request) => {
     const companyInfo = company?.trim() || "Non renseigné";
     const html = buildEmailHtml({ name, phone, email, company: companyInfo });
 
-    const transporter = nodemailer.createTransport({
-      host: SMTP_HOST,
-      port: SMTP_PORT,
-      secure: SMTP_PORT === 465,
-      auth: { user: SMTP_USER, pass: SMTP_PASS },
-    });
-
-    await transporter.sendMail({
-      from: `EIDEN Group <${FROM_EMAIL}>`,
-      to: TO_EMAIL,
+    await smtpSend({
+      host: smtpHost,
+      port: smtpPort,
+      user: smtpUser,
+      pass: smtpPass,
+      from: fromEmail,
+      to: toEmail,
       replyTo: email,
       subject: `Appel découverte · ${name}${company && company !== "Non renseigné" ? ` · ${company}` : ""}`,
       html,
@@ -81,6 +78,119 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+interface SmtpOpts {
+  host: string;
+  port: number;
+  user: string;
+  pass: string;
+  from: string;
+  to: string;
+  replyTo: string;
+  subject: string;
+  html: string;
+}
+
+async function smtpSend(opts: SmtpOpts): Promise<void> {
+  const useTls = opts.port === 465;
+  const e = new TextEncoder();
+
+  const raw = useTls
+    ? await Deno.connectTls({ hostname: opts.host, port: opts.port })
+    : await Deno.connect({ hostname: opts.host, port: opts.port });
+
+  async function cmd(line: string, expected: string): Promise<string> {
+    if (line) await raw.write(e.encode(line + "\r\n"));
+    const buf = new Uint8Array(4096);
+    const n = await raw.read(buf);
+    if (n === null) throw new Error("Connection closed");
+    const resp = new TextDecoder().decode(buf.subarray(0, n));
+    if (!resp.startsWith(expected)) {
+      throw new Error(`SMTP ${expected} expected, got: ${resp.trim()}`);
+    }
+    return resp;
+  }
+
+  // Greeting
+  await cmd("", "220");
+
+  // EHLO
+  const ehloResp = await cmd("EHLO eiden-group.com", "250");
+
+  // STARTTLS (port 587 only)
+  if (!useTls && ehloResp.toUpperCase().includes("STARTTLS")) {
+    await cmd("STARTTLS", "220");
+    // Upgrade to TLS - need to replace the connection
+    const tlsConn = await Deno.startTls(raw, { hostname: opts.host });
+    // Re-bind cmd to use the new connection
+    const tlsCmd = async (line: string, expected: string): Promise<string> => {
+      if (line) await tlsConn.write(e.encode(line + "\r\n"));
+      const buf = new Uint8Array(4096);
+      const n = await tlsConn.read(buf);
+      if (n === null) throw new Error("Connection closed");
+      const resp = new TextDecoder().decode(buf.subarray(0, n));
+      if (!resp.startsWith(expected)) {
+        throw new Error(`SMTP ${expected} expected, got: ${resp.trim()}`);
+      }
+      return resp;
+    };
+    await tlsCmd("EHLO eiden-group.com", "250");
+    await tlsCmd(`AUTH LOGIN`, "334");
+    await tlsCmd(btoa(opts.user), "334");
+    await tlsCmd(btoa(opts.pass), "235");
+    await tlsCmd(`MAIL FROM:<${opts.from}>`, "250");
+    await tlsCmd(`RCPT TO:<${opts.to}>`, "250");
+    await tlsCmd("DATA", "354");
+    const body = buildMime(opts);
+    await tlsCmd(body + "\r\n.", "250");
+    await tlsCmd("QUIT", "221");
+    tlsConn.close();
+    return;
+  }
+
+  // AUTH LOGIN
+  await cmd(`AUTH LOGIN`, "334");
+  await cmd(btoa(opts.user), "334");
+  await cmd(btoa(opts.pass), "235");
+
+  // Send
+  await cmd(`MAIL FROM:<${opts.from}>`, "250");
+  await cmd(`RCPT TO:<${opts.to}>`, "250");
+  await cmd("DATA", "354");
+  const body = buildMime(opts);
+  await cmd(body + "\r\n.", "250");
+  await cmd("QUIT", "221");
+  raw.close();
+}
+
+function buildMime(o: SmtpOpts): string {
+  const boundary = `---=_${crypto.randomUUID()}`;
+  const plain = o.html.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+
+  return [
+    `From: EIDEN Group <${o.from}>`,
+    `To: ${o.to}`,
+    `Reply-To: ${o.replyTo}`,
+    `Subject: ${o.subject}`,
+    "MIME-Version: 1.0",
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    "",
+    `--${boundary}`,
+    "Content-Type: text/plain; charset=utf-8",
+    "Content-Transfer-Encoding: base64",
+    "",
+    btoa(plain),
+    "",
+    `--${boundary}`,
+    "Content-Type: text/html; charset=utf-8",
+    "Content-Transfer-Encoding: base64",
+    "",
+    btoa(o.html),
+    "",
+    `--${boundary}--`,
+  ].join("\r\n");
+}
 
 function buildEmailHtml(data: Payload): string {
   const { name, phone, email, company } = data;

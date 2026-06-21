@@ -1,7 +1,4 @@
 {
   "name": "send-email-appel",
-  "version": "1.0.0",
-  "imports": {
-    "nodemailer": "npm:nodemailer@7"
-  }
+  "version": "1.0.0"
 }
