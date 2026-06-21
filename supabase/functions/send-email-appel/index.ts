@@ -60,12 +60,23 @@ Deno.serve(async (req: Request) => {
       auth: { user, pass },
     });
 
+    const subject = `Appel découverte · ${name}${company && company !== "Non renseigné" ? ` · ${company}` : ""}`;
+
+    // Send admin notification
     await transporter.sendMail({
       from: smtpFrom,
       to: adminEmail,
       replyTo: email,
-      subject: `Appel découverte · ${name}${company && company !== "Non renseigné" ? ` · ${company}` : ""}`,
-      html: buildEmailHtml({ name, phone, email, company: companyInfo }),
+      subject,
+      html: buildAdminEmailHtml({ name, phone, email, company: companyInfo }),
+    });
+
+    // Send visitor confirmation
+    await transporter.sendMail({
+      from: smtpFrom,
+      to: email,
+      subject: "Confirmation · EIDEN Group",
+      html: buildVisitorEmailHtml({ name, phone, email, company: companyInfo }),
     });
 
     transporter.close();
@@ -83,7 +94,7 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-function buildEmailHtml(data: Payload): string {
+function buildAdminEmailHtml(data: Payload): string {
   const { name, phone, email, company } = data;
 
   return `<!DOCTYPE html>
@@ -201,6 +212,117 @@ function buildEmailHtml(data: Payload): string {
                     <a href="mailto:${escapeHtml(email)}"
                        style="display:inline-block;padding:14px 32px;background-color:#0C5657;color:#f7f5f0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;font-weight:600;letter-spacing:0.5px;text-decoration:none;border-radius:50px;">
                       Répondre à cette demande →
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:24px 36px 32px;">
+              <table role="presentation" width="100%"><tr><td style="height:1px;background-color:#0C5657;opacity:0.1;"></td></tr></table>
+              <table role="presentation" width="100%" style="margin-top:16px;">
+                <tr>
+                  <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:10px;color:#9b8c6b;letter-spacing:0.5px;">
+                    EIDEN GROUP · Agadir Bay, Technopole, Agadir, Maroc
+                  </td>
+                  <td align="right" style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:10px;color:#9b8c6b;">
+                    contact@eiden-group.com
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>`;
+}
+
+function buildVisitorEmailHtml(data: Payload): string {
+  const { name } = data;
+
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Confirmation · EIDEN</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f7f5f0;font-family:Georgia,'Times New Roman',serif;">
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f7f5f0;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#f7f5f0;border-radius:12px;overflow:hidden;">
+
+          <tr>
+            <td style="height:6px;background-color:#0C5657;"></td>
+          </tr>
+
+          <tr>
+            <td style="padding:32px 36px 0;">
+              <table role="presentation" width="100%">
+                <tr>
+                  <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#0C5657;">
+                    EIDEN GROUP
+                  </td>
+                  <td align="right" style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:1px;color:#9b8c6b;">
+                    CONFIRMATION
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:16px 36px 0;">
+              <table role="presentation" width="100%"><tr><td style="height:1px;background-color:#0C5657;opacity:0.15;"></td></tr></table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:28px 36px 0;">
+              <h1 style="margin:0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.3px;color:#1a2e2b;">
+                Merci, ${escapeHtml(name)}.
+              </h1>
+              <p style="margin:12px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:15px;line-height:1.7;color:#4a5552;">
+                Votre demande d'appel découverte a bien été reçue. Un membre de l'équipe EIDEN
+                la lira personnellement et vous répondra sous <strong>24 heures</strong>.
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:24px 36px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#efece4;border-radius:8px;">
+                <tr>
+                  <td style="padding:20px 28px;font-family:Georgia,'Times New Roman',serif;font-size:14px;line-height:1.6;color:#4a5552;">
+                    <p style="margin:0 0 8px;"><strong style="color:#1a2e2b;">Rappel de votre sélection :</strong></p>
+                    <p style="margin:0 0 4px;">· Appel découverte gratuit · 30 minutes</p>
+                    <p style="margin:0 0 4px;">· Sans présentation commerciale</p>
+                    <p style="margin:0;">· Réponse personnelle d'un associé</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:0 36px 8px;">
+              <table role="presentation" width="100%">
+                <tr>
+                  <td align="center">
+                    <a href="https://eiden-group.com"
+                       style="display:inline-block;padding:14px 32px;background-color:#0C5657;color:#f7f5f0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;font-weight:600;letter-spacing:0.5px;text-decoration:none;border-radius:50px;">
+                      Visiter notre site →
                     </a>
                   </td>
                 </tr>
