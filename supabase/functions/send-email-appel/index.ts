@@ -33,11 +33,11 @@ Deno.serve(async (req: Request) => {
     const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "587", 10);
     const smtpUser = Deno.env.get("SMTP_USER");
     const smtpPass = Deno.env.get("SMTP_PASS");
-    const fromEmail = Deno.env.get("FROM_EMAIL");
-    const toEmail = Deno.env.get("TO_EMAIL");
+    const smtpFrom = Deno.env.get("SMTP_FROM") || `EIDEN Group <${smtpUser}>`;
+    const adminEmail = Deno.env.get("ADMIN_NOTIFICATION_EMAIL") || smtpUser;
 
-    if (!smtpHost || !smtpUser || !smtpPass || !fromEmail || !toEmail) {
-      throw new Error("Missing SMTP config. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, FROM_EMAIL, TO_EMAIL.");
+    if (!smtpHost || !smtpUser || !smtpPass) {
+      throw new Error("Missing SMTP config. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS in Supabase secrets.");
     }
 
     const { name, phone, email, company } = (await req.json()) as Payload;
@@ -57,8 +57,8 @@ Deno.serve(async (req: Request) => {
       port: smtpPort,
       user: smtpUser,
       pass: smtpPass,
-      from: fromEmail,
-      to: toEmail,
+      from: smtpFrom,
+      to: adminEmail,
       replyTo: email,
       subject: `Appel découverte · ${name}${company && company !== "Non renseigné" ? ` · ${company}` : ""}`,
       html,
