@@ -2,7 +2,6 @@
   "name": "send-email-appel",
   "version": "1.0.0",
   "imports": {
-    "resend": "npm:resend@4",
-    "react": "npm:react@19"
+    "nodemailer": "npm:nodemailer@7"
   }
 }

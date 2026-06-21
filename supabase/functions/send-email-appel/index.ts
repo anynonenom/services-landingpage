@@ -1,6 +1,4 @@
-// Follow the setup guide at:
-// https://supabase.com/docs/guides/functions/secrets
-// Run: supabase secrets set RESEND_API_KEY=re_...
+import nodemailer from "nodemailer";
 
 interface Payload {
   name: string;
@@ -9,9 +7,12 @@ interface Payload {
   company?: string;
 }
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-const FROM_EMAIL = Deno.env.get("FROM_EMAIL") || "contact@eiden-group.com";
-const TO_EMAIL = Deno.env.get("TO_EMAIL") || "contact@eiden-group.com";
+const SMTP_HOST = Deno.env.get("SMTP_HOST") || "";
+const SMTP_PORT = parseInt(Deno.env.get("SMTP_PORT") || "587", 10);
+const SMTP_USER = Deno.env.get("SMTP_USER") || "";
+const SMTP_PASS = Deno.env.get("SMTP_PASS") || "";
+const FROM_EMAIL = Deno.env.get("FROM_EMAIL") || "";
+const TO_EMAIL = Deno.env.get("TO_EMAIL") || "";
 
 const corsHeaders = (req: Request) => ({
   "Access-Control-Allow-Origin": "https://appel.eiden-group.com",
@@ -35,8 +36,10 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    if (!RESEND_API_KEY) {
-      throw new Error("RESEND_API_KEY secret not set. Run: supabase secrets set RESEND_API_KEY=re_...");
+    if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS || !FROM_EMAIL || !TO_EMAIL) {
+      throw new Error(
+        "Missing SMTP configuration. Set SMTP_HOST, SMTP_USER, SMTP_PASS, FROM_EMAIL, TO_EMAIL in Supabase secrets."
+      );
     }
 
     const { name, phone, email, company } = (await req.json()) as Payload;
@@ -49,41 +52,31 @@ Deno.serve(async (req: Request) => {
     }
 
     const companyInfo = company?.trim() || "Non renseigné";
-
     const html = buildEmailHtml({ name, phone, email, company: companyInfo });
 
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: `EIDEN Group <${FROM_EMAIL}>`,
-        to: [TO_EMAIL],
-        reply_to: email,
-        subject: `Appel découverte · ${name}${company && company !== "Non renseigné" ? ` · ${company}` : ""}`,
-        html,
-      }),
+    const transporter = nodemailer.createTransport({
+      host: SMTP_HOST,
+      port: SMTP_PORT,
+      secure: SMTP_PORT === 465,
+      auth: { user: SMTP_USER, pass: SMTP_PASS },
     });
 
-    if (!res.ok) {
-      const err = await res.text();
-      console.error("Resend error:", err);
-      return new Response(
-        JSON.stringify({ error: "Failed to send email" }),
-        { status: 500, headers: { ...headers, "Content-Type": "application/json" } }
-      );
-    }
+    await transporter.sendMail({
+      from: `EIDEN Group <${FROM_EMAIL}>`,
+      to: TO_EMAIL,
+      replyTo: email,
+      subject: `Appel découverte · ${name}${company && company !== "Non renseigné" ? ` · ${company}` : ""}`,
+      html,
+    });
 
     return new Response(
       JSON.stringify({ success: true }),
       { status: 200, headers: { ...headers, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("Unexpected error:", err);
+    console.error("Error:", err);
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
+      JSON.stringify({ error: err instanceof Error ? err.message : "Internal server error" }),
       { status: 500, headers: { ...headers, "Content-Type": "application/json" } }
     );
   }
@@ -105,15 +98,12 @@ function buildEmailHtml(data: Payload): string {
     <tr>
       <td align="center" style="padding:40px 16px;">
 
-        <!-- Card -->
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#f7f5f0;border-radius:12px;overflow:hidden;">
 
-          <!-- Top accent bar -->
           <tr>
             <td style="height:6px;background-color:#0C5657;"></td>
           </tr>
 
-          <!-- Logo / Brand -->
           <tr>
             <td style="padding:32px 36px 0;">
               <table role="presentation" width="100%">
@@ -129,14 +119,12 @@ function buildEmailHtml(data: Payload): string {
             </td>
           </tr>
 
-          <!-- Thin rule -->
           <tr>
             <td style="padding:16px 36px 0;">
               <table role="presentation" width="100%"><tr><td style="height:1px;background-color:#0C5657;opacity:0.15;"></td></tr></table>
             </td>
           </tr>
 
-          <!-- Title -->
           <tr>
             <td style="padding:28px 36px 0;">
               <h1 style="margin:0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.3px;color:#1a2e2b;">
@@ -148,14 +136,12 @@ function buildEmailHtml(data: Payload): string {
             </td>
           </tr>
 
-          <!-- Details -->
           <tr>
             <td style="padding:24px 36px;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#efece4;border-radius:8px;">
                 <tr>
                   <td style="padding:24px 28px;">
 
-                    <!-- Name -->
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
                       <tr>
                         <td width="120" style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#9b8c6b;vertical-align:top;padding:4px 0;">
@@ -167,7 +153,6 @@ function buildEmailHtml(data: Payload): string {
                       </tr>
                     </table>
 
-                    <!-- Phone -->
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
                       <tr>
                         <td width="120" style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#9b8c6b;vertical-align:top;padding:4px 0;">
@@ -179,7 +164,6 @@ function buildEmailHtml(data: Payload): string {
                       </tr>
                     </table>
 
-                    <!-- Email -->
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
                       <tr>
                         <td width="120" style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#9b8c6b;vertical-align:top;padding:4px 0;">
@@ -191,7 +175,6 @@ function buildEmailHtml(data: Payload): string {
                       </tr>
                     </table>
 
-                    <!-- Company -->
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                       <tr>
                         <td width="120" style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#9b8c6b;vertical-align:top;padding:4px 0;">
@@ -209,7 +192,6 @@ function buildEmailHtml(data: Payload): string {
             </td>
           </tr>
 
-          <!-- CTA -->
           <tr>
             <td style="padding:0 36px 8px;">
               <table role="presentation" width="100%">
@@ -225,7 +207,6 @@ function buildEmailHtml(data: Payload): string {
             </td>
           </tr>
 
-          <!-- Footer -->
           <tr>
             <td style="padding:24px 36px 32px;">
               <table role="presentation" width="100%"><tr><td style="height:1px;background-color:#0C5657;opacity:0.1;"></td></tr></table>
