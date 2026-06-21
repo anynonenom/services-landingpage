@@ -1,3 +1,5 @@
+import nodemailer from "nodemailer";
+
 interface Payload {
   name: string;
   phone: string;
@@ -29,15 +31,15 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const smtpHost = Deno.env.get("SMTP_HOST");
-    const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "587", 10);
-    const smtpUser = Deno.env.get("SMTP_USER");
-    const smtpPass = Deno.env.get("SMTP_PASS");
-    const smtpFrom = Deno.env.get("SMTP_FROM") || `EIDEN Group <${smtpUser}>`;
-    const adminEmail = Deno.env.get("ADMIN_NOTIFICATION_EMAIL") || smtpUser;
+    const host = Deno.env.get("SMTP_HOST");
+    const port = parseInt(Deno.env.get("SMTP_PORT") || "587");
+    const user = Deno.env.get("SMTP_USER");
+    const pass = Deno.env.get("SMTP_PASS");
+    const smtpFrom = Deno.env.get("SMTP_FROM") || `EIDEN Group <${user}>`;
+    const adminEmail = Deno.env.get("ADMIN_NOTIFICATION_EMAIL") || user;
 
-    if (!smtpHost || !smtpUser || !smtpPass) {
-      throw new Error("Missing SMTP config. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS in Supabase secrets.");
+    if (!host || !user || !pass) {
+      throw new Error("Missing SMTP credentials. Set SMTP_HOST, SMTP_USER, SMTP_PASS.");
     }
 
     const { name, phone, email, company } = (await req.json()) as Payload;
@@ -50,19 +52,23 @@ Deno.serve(async (req: Request) => {
     }
 
     const companyInfo = company?.trim() || "Non renseigné";
-    const html = buildEmailHtml({ name, phone, email, company: companyInfo });
 
-    await smtpSend({
-      host: smtpHost,
-      port: smtpPort,
-      user: smtpUser,
-      pass: smtpPass,
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth: { user, pass },
+    });
+
+    await transporter.sendMail({
       from: smtpFrom,
       to: adminEmail,
       replyTo: email,
       subject: `Appel découverte · ${name}${company && company !== "Non renseigné" ? ` · ${company}` : ""}`,
-      html,
+      html: buildEmailHtml({ name, phone, email, company: companyInfo }),
     });
+
+    transporter.close();
 
     return new Response(
       JSON.stringify({ success: true }),
@@ -76,121 +82,6 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
-
-interface SmtpOpts {
-  host: string;
-  port: number;
-  user: string;
-  pass: string;
-  from: string;
-  to: string;
-  replyTo: string;
-  subject: string;
-  html: string;
-}
-
-async function smtpSend(opts: SmtpOpts): Promise<void> {
-  const e = new TextEncoder();
-  const isTls = opts.port === 465;
-
-  let conn: Deno.TcpConn | Deno.TlsConn = isTls
-    ? await Deno.connectTls({ hostname: opts.host, port: opts.port })
-    : await Deno.connect({ hostname: opts.host, port: opts.port });
-
-  let buf = "";
-
-  async function readAll(): Promise<void> {
-    const chunk = new Uint8Array(4096);
-    const n = await conn.read(chunk);
-    if (n === null) throw new Error("Connection closed");
-    buf += new TextDecoder().decode(chunk.subarray(0, n));
-  }
-
-  async function readResponse(expected: string): Promise<string> {
-    // Keep reading until we have a complete final SMTP response line
-    while (true) {
-      const idx = buf.indexOf("\r\n");
-      if (idx === -1) { await readAll(); continue; }
-      // Check if this is the final line (code followed by space at position 3)
-      if (idx >= 3 && buf[3] === " ") {
-        // Found the final response line
-        const line = buf.substring(0, idx);
-        buf = buf.substring(idx + 2);
-        if (!line.startsWith(expected)) {
-          throw new Error(`SMTP ${expected} expected, got: ${line}`);
-        }
-        return line;
-      }
-      // Continuation line (code followed by hyphen) - consume and continue
-      buf = buf.substring(idx + 2);
-      await readAll();
-    }
-  }
-
-  async function cmd(line: string, expected: string): Promise<string> {
-    if (line) await conn.write(e.encode(line + "\r\n"));
-    return await readResponse(expected);
-  }
-
-  // Greeting
-  await cmd("", "220");
-
-  // EHLO
-  const ehloResp = await cmd("EHLO eiden-group.com", "250");
-
-  // STARTTLS for port 587
-  if (!isTls && ehloResp.toUpperCase().includes("STARTTLS")) {
-    await cmd("STARTTLS", "220");
-    conn = await Deno.startTls(conn as Deno.TcpConn, { hostname: opts.host });
-    buf = "";
-    await cmd("EHLO eiden-group.com", "250");
-  }
-
-  // AUTH LOGIN
-  await cmd("AUTH LOGIN", "334");
-  await cmd(btoa(opts.user), "334");
-  await cmd(btoa(opts.pass), "235");
-
-  await cmd(`MAIL FROM:<${opts.from}>`, "250");
-  await cmd(`RCPT TO:<${opts.to}>`, "250");
-  await cmd("DATA", "354");
-  await cmd(buildMime(opts) + "\r\n.", "250");
-  await cmd("QUIT", "221");
-
-  conn.close();
-}
-
-function buildMime(o: SmtpOpts): string {
-  const boundary = `---=_${crypto.randomUUID()}`;
-  const plain = o.html
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
-    .replace(/<[^>]+>/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  return [
-    `From: EIDEN Group <${o.from}>`,
-    `To: ${o.to}`,
-    `Reply-To: ${o.replyTo}`,
-    `Subject: ${o.subject}`,
-    "MIME-Version: 1.0",
-    `Content-Type: multipart/alternative; boundary="${boundary}"`,
-    "",
-    `--${boundary}`,
-    "Content-Type: text/plain; charset=utf-8",
-    "Content-Transfer-Encoding: base64",
-    "",
-    btoa(plain),
-    "",
-    `--${boundary}`,
-    "Content-Type: text/html; charset=utf-8",
-    "Content-Transfer-Encoding: base64",
-    "",
-    btoa(o.html),
-    "",
-    `--${boundary}--`,
-  ].join("\r\n");
-}
 
 function buildEmailHtml(data: Payload): string {
   const { name, phone, email, company } = data;

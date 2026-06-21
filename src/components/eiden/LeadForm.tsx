@@ -2,7 +2,8 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { Check, User, Phone, Mail, Building2, Lock, ArrowRight, Loader2, AlertCircle } from "lucide-react";
 import icon from "@/assets/icon.png";
-import { supabase, supabaseConfigured } from "@/lib/supabase";
+const VITE_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const VITE_SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 type Form = { name: string; phone: string; email: string; company: string; consent: boolean };
 const empty: Form = { name: "", phone: "", email: "", company: "", consent: false };
@@ -38,33 +39,36 @@ export function LeadForm() {
     setError(null);
 
     try {
-      if (!supabaseConfigured || !supabase) {
-        throw new Error("Supabase not configured");
+      if (!VITE_SUPABASE_URL || !VITE_SUPABASE_ANON_KEY) {
+        throw new Error("Supabase non configuré");
       }
 
-      const { error: fnError } = await supabase.functions.invoke(
-        "send-email-appel",
-        {
-          body: {
-            name: form.name.trim(),
-            phone: form.phone.trim(),
-            email: form.email.trim(),
-            company: form.company.trim(),
-          },
-        }
-      );
+      const url = `${VITE_SUPABASE_URL}/functions/v1/send-email-appel`;
 
-      if (fnError) throw fnError;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          name: form.name.trim(),
+          phone: form.phone.trim(),
+          email: form.email.trim(),
+          company: form.company.trim(),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Erreur inconnue du serveur");
+      }
+
       setSent(true);
     } catch (err) {
       console.error("Edge function error:", err);
-      const ctx = (err as any)?.context;
-      const message =
-        ctx?.data?.error ||
-        ctx?.error ||
-        (err as Error)?.message ||
-        "Une erreur est survenue. Veuillez réessayer ou nous contacter directement.";
-      setError(message);
+      setError(err instanceof Error ? err.message : "Une erreur est survenue.");
     } finally {
       setSubmitting(false);
     }
