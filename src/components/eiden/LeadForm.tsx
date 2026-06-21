@@ -38,37 +38,27 @@ export function LeadForm() {
     setError(null);
 
     try {
-      if (supabaseConfigured && supabase) {
-        const { error: fnError } = await supabase.functions.invoke(
-          "send-email-appel",
-          {
-            body: {
-              name: form.name.trim(),
-              phone: form.phone.trim(),
-              email: form.email.trim(),
-              company: form.company.trim(),
-            },
-          }
-        );
-
-        if (fnError) throw fnError;
+      if (!supabaseConfigured || !supabase) {
+        throw new Error("Supabase not configured");
       }
+
+      const { error: fnError } = await supabase.functions.invoke(
+        "send-email-appel",
+        {
+          body: {
+            name: form.name.trim(),
+            phone: form.phone.trim(),
+            email: form.email.trim(),
+            company: form.company.trim(),
+          },
+        }
+      );
+
+      if (fnError) throw fnError;
       setSent(true);
     } catch (err) {
       console.error("Edge function error:", err);
-      // Fallback to mailto if edge function is not deployed yet
-      try {
-        const subject = encodeURIComponent(
-          `Appel découverte : ${form.name}${form.company ? " · " + form.company : ""}`
-        );
-        const body = encodeURIComponent(
-          `Nom: ${form.name}\nTéléphone: ${form.phone}\nE-mail: ${form.email}\nEntreprise: ${form.company || "Non renseigné"}`
-        );
-        window.location.href = `mailto:contact@eiden-group.com?subject=${subject}&body=${body}`;
-        setSent(true);
-      } catch {
-        setError("Une erreur est survenue. Veuillez réessayer ou nous contacter directement.");
-      }
+      setError("Une erreur est survenue. Veuillez réessayer ou nous contacter directement.");
     } finally {
       setSubmitting(false);
     }
