@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { Check, User, Phone, Mail, Building2, Lock, ArrowRight, Loader2, AlertCircle } from "lucide-react";
 import icon from "@/assets/icon.png";
-import { supabase } from "@/lib/supabase";
+import { supabase, supabaseConfigured } from "@/lib/supabase";
 
 type Form = { name: string; phone: string; email: string; company: string; consent: boolean };
 const empty: Form = { name: "", phone: "", email: "", company: "", consent: false };
@@ -38,19 +38,21 @@ export function LeadForm() {
     setError(null);
 
     try {
-      const { error: fnError } = await supabase.functions.invoke(
-        "send-email-appel",
-        {
-          body: {
-            name: form.name.trim(),
-            phone: form.phone.trim(),
-            email: form.email.trim(),
-            company: form.company.trim(),
-          },
-        }
-      );
+      if (supabaseConfigured && supabase) {
+        const { error: fnError } = await supabase.functions.invoke(
+          "send-email-appel",
+          {
+            body: {
+              name: form.name.trim(),
+              phone: form.phone.trim(),
+              email: form.email.trim(),
+              company: form.company.trim(),
+            },
+          }
+        );
 
-      if (fnError) throw fnError;
+        if (fnError) throw fnError;
+      }
       setSent(true);
     } catch (err) {
       console.error("Edge function error:", err);
