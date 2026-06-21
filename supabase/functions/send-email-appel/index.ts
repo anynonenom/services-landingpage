@@ -30,16 +30,14 @@ Deno.serve(async (req: Request) => {
 
   try {
     const smtpHost = Deno.env.get("SMTP_HOST");
-    const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465", 10);
+    const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "587", 10);
     const smtpUser = Deno.env.get("SMTP_USER");
     const smtpPass = Deno.env.get("SMTP_PASS");
     const fromEmail = Deno.env.get("FROM_EMAIL");
     const toEmail = Deno.env.get("TO_EMAIL");
 
     if (!smtpHost || !smtpUser || !smtpPass || !fromEmail || !toEmail) {
-      throw new Error(
-        "Missing SMTP configuration. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, FROM_EMAIL, TO_EMAIL in Supabase secrets."
-      );
+      throw new Error("Missing SMTP config. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, FROM_EMAIL, TO_EMAIL.");
     }
 
     const { name, phone, email, company } = (await req.json()) as Payload;
@@ -92,21 +90,46 @@ interface SmtpOpts {
 }
 
 async function smtpSend(opts: SmtpOpts): Promise<void> {
-  const useTls = opts.port === 465;
   const e = new TextEncoder();
 
-  const raw = useTls
+  const connectTls = opts.port === 465;
+  const raw = connectTls
     ? await Deno.connectTls({ hostname: opts.host, port: opts.port })
     : await Deno.connect({ hostname: opts.host, port: opts.port });
 
+  let conn: Deno.TcpConn | Deno.TlsConn = raw;
+
+  // Read one complete SMTP line (until \r\n)
+  async function readLine(): Promise<string> {
+    const buf = new Uint8Array(1);
+    const parts: number[] = [];
+    while (true) {
+      const n = await conn.read(buf);
+      if (n === null) throw new Error("Connection closed");
+      parts.push(buf[0]);
+      if (parts.length >= 2 && parts[parts.length - 2] === 0x0d && parts[parts.length - 1] === 0x0a) {
+        return new Uint8Array(parts.slice(0, -2)).reduce((s, b) => s + String.fromCharCode(b), "");
+      }
+    }
+  }
+
+  // Read a complete SMTP response (all lines until final one)
+  async function readResponse(): Promise<string> {
+    const lines: string[] = [];
+    while (true) {
+      const line = await readLine();
+      lines.push(line);
+      // Final line: code followed by space (not hyphen)
+      if (line.length >= 4 && line[3] === " ") break;
+    }
+    return lines.join("\n");
+  }
+
   async function cmd(line: string, expected: string): Promise<string> {
-    if (line) await raw.write(e.encode(line + "\r\n"));
-    const buf = new Uint8Array(4096);
-    const n = await raw.read(buf);
-    if (n === null) throw new Error("Connection closed");
-    const resp = new TextDecoder().decode(buf.subarray(0, n));
+    if (line) await conn.write(e.encode(line + "\r\n"));
+    const resp = await readResponse();
     if (!resp.startsWith(expected)) {
-      throw new Error(`SMTP ${expected} expected, got: ${resp.trim()}`);
+      throw new Error(`SMTP ${expected} expected, got: ${resp.slice(0, 200)}`);
     }
     return resp;
   }
@@ -117,35 +140,11 @@ async function smtpSend(opts: SmtpOpts): Promise<void> {
   // EHLO
   const ehloResp = await cmd("EHLO eiden-group.com", "250");
 
-  // STARTTLS (port 587 only)
-  if (!useTls && ehloResp.toUpperCase().includes("STARTTLS")) {
+  // STARTTLS for port 587
+  if (!connectTls && ehloResp.toUpperCase().includes("STARTTLS")) {
     await cmd("STARTTLS", "220");
-    // Upgrade to TLS - need to replace the connection
-    const tlsConn = await Deno.startTls(raw, { hostname: opts.host });
-    // Re-bind cmd to use the new connection
-    const tlsCmd = async (line: string, expected: string): Promise<string> => {
-      if (line) await tlsConn.write(e.encode(line + "\r\n"));
-      const buf = new Uint8Array(4096);
-      const n = await tlsConn.read(buf);
-      if (n === null) throw new Error("Connection closed");
-      const resp = new TextDecoder().decode(buf.subarray(0, n));
-      if (!resp.startsWith(expected)) {
-        throw new Error(`SMTP ${expected} expected, got: ${resp.trim()}`);
-      }
-      return resp;
-    };
-    await tlsCmd("EHLO eiden-group.com", "250");
-    await tlsCmd(`AUTH LOGIN`, "334");
-    await tlsCmd(btoa(opts.user), "334");
-    await tlsCmd(btoa(opts.pass), "235");
-    await tlsCmd(`MAIL FROM:<${opts.from}>`, "250");
-    await tlsCmd(`RCPT TO:<${opts.to}>`, "250");
-    await tlsCmd("DATA", "354");
-    const body = buildMime(opts);
-    await tlsCmd(body + "\r\n.", "250");
-    await tlsCmd("QUIT", "221");
-    tlsConn.close();
-    return;
+    conn = await Deno.startTls(conn as Deno.TcpConn, { hostname: opts.host });
+    await cmd("EHLO eiden-group.com", "250");
   }
 
   // AUTH LOGIN
@@ -157,16 +156,19 @@ async function smtpSend(opts: SmtpOpts): Promise<void> {
   await cmd(`MAIL FROM:<${opts.from}>`, "250");
   await cmd(`RCPT TO:<${opts.to}>`, "250");
   await cmd("DATA", "354");
-  const body = buildMime(opts);
-  await cmd(body + "\r\n.", "250");
+  await cmd(buildMime(opts) + "\r\n.", "250");
   await cmd("QUIT", "221");
-  raw.close();
+
+  conn.close();
 }
 
 function buildMime(o: SmtpOpts): string {
   const boundary = `---=_${crypto.randomUUID()}`;
-  const plain = o.html.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
-    .replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+  const plain = o.html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 
   return [
     `From: EIDEN Group <${o.from}>`,
