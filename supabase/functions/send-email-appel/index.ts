@@ -9,7 +9,7 @@ interface Payload {
   company?: string;
 }
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const FROM_EMAIL = Deno.env.get("FROM_EMAIL") || "contact@eiden-group.com";
 const TO_EMAIL = Deno.env.get("TO_EMAIL") || "contact@eiden-group.com";
 
@@ -35,6 +35,10 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    if (!RESEND_API_KEY) {
+      throw new Error("RESEND_API_KEY secret not set. Run: supabase secrets set RESEND_API_KEY=re_...");
+    }
+
     const { name, phone, email, company } = (await req.json()) as Payload;
 
     if (!name || !phone || !email) {
