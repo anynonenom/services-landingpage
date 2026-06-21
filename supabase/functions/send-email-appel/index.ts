@@ -16,7 +16,7 @@ const TO_EMAIL = Deno.env.get("TO_EMAIL") || "contact@eiden-group.com";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "https://appel.eiden-group.com",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, x-client-info",
   "Access-Control-Max-Age": "86400",
 };
 
