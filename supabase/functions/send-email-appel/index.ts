@@ -91,47 +91,45 @@ interface SmtpOpts {
 
 async function smtpSend(opts: SmtpOpts): Promise<void> {
   const e = new TextEncoder();
+  const isTls = opts.port === 465;
 
-  const connectTls = opts.port === 465;
-  const raw = connectTls
+  let conn: Deno.TcpConn | Deno.TlsConn = isTls
     ? await Deno.connectTls({ hostname: opts.host, port: opts.port })
     : await Deno.connect({ hostname: opts.host, port: opts.port });
 
-  let conn: Deno.TcpConn | Deno.TlsConn = raw;
+  let buf = "";
 
-  // Read one complete SMTP line (until \r\n)
-  async function readLine(): Promise<string> {
-    const buf = new Uint8Array(1);
-    const parts: number[] = [];
-    while (true) {
-      const n = await conn.read(buf);
-      if (n === null) throw new Error("Connection closed");
-      parts.push(buf[0]);
-      if (parts.length >= 2 && parts[parts.length - 2] === 0x0d && parts[parts.length - 1] === 0x0a) {
-        return new Uint8Array(parts.slice(0, -2)).reduce((s, b) => s + String.fromCharCode(b), "");
-      }
-    }
+  async function readAll(): Promise<void> {
+    const chunk = new Uint8Array(4096);
+    const n = await conn.read(chunk);
+    if (n === null) throw new Error("Connection closed");
+    buf += new TextDecoder().decode(chunk.subarray(0, n));
   }
 
-  // Read a complete SMTP response (all lines until final one)
-  async function readResponse(): Promise<string> {
-    const lines: string[] = [];
+  async function readResponse(expected: string): Promise<string> {
+    // Keep reading until we have a complete final SMTP response line
     while (true) {
-      const line = await readLine();
-      lines.push(line);
-      // Final line: code followed by space (not hyphen)
-      if (line.length >= 4 && line[3] === " ") break;
+      const idx = buf.indexOf("\r\n");
+      if (idx === -1) { await readAll(); continue; }
+      // Check if this is the final line (code followed by space at position 3)
+      if (idx >= 3 && buf[3] === " ") {
+        // Found the final response line
+        const line = buf.substring(0, idx);
+        buf = buf.substring(idx + 2);
+        if (!line.startsWith(expected)) {
+          throw new Error(`SMTP ${expected} expected, got: ${line}`);
+        }
+        return line;
+      }
+      // Continuation line (code followed by hyphen) - consume and continue
+      buf = buf.substring(idx + 2);
+      await readAll();
     }
-    return lines.join("\n");
   }
 
   async function cmd(line: string, expected: string): Promise<string> {
     if (line) await conn.write(e.encode(line + "\r\n"));
-    const resp = await readResponse();
-    if (!resp.startsWith(expected)) {
-      throw new Error(`SMTP ${expected} expected, got: ${resp.slice(0, 200)}`);
-    }
-    return resp;
+    return await readResponse(expected);
   }
 
   // Greeting
@@ -141,18 +139,18 @@ async function smtpSend(opts: SmtpOpts): Promise<void> {
   const ehloResp = await cmd("EHLO eiden-group.com", "250");
 
   // STARTTLS for port 587
-  if (!connectTls && ehloResp.toUpperCase().includes("STARTTLS")) {
+  if (!isTls && ehloResp.toUpperCase().includes("STARTTLS")) {
     await cmd("STARTTLS", "220");
     conn = await Deno.startTls(conn as Deno.TcpConn, { hostname: opts.host });
+    buf = "";
     await cmd("EHLO eiden-group.com", "250");
   }
 
   // AUTH LOGIN
-  await cmd(`AUTH LOGIN`, "334");
+  await cmd("AUTH LOGIN", "334");
   await cmd(btoa(opts.user), "334");
   await cmd(btoa(opts.pass), "235");
 
-  // Send
   await cmd(`MAIL FROM:<${opts.from}>`, "250");
   await cmd(`RCPT TO:<${opts.to}>`, "250");
   await cmd("DATA", "354");
