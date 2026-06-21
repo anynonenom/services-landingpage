@@ -58,7 +58,13 @@ export function LeadForm() {
       setSent(true);
     } catch (err) {
       console.error("Edge function error:", err);
-      setError("Une erreur est survenue. Veuillez réessayer ou nous contacter directement.");
+      const ctx = (err as any)?.context;
+      const message =
+        ctx?.data?.error ||
+        ctx?.error ||
+        (err as Error)?.message ||
+        "Une erreur est survenue. Veuillez réessayer ou nous contacter directement.";
+      setError(message);
     } finally {
       setSubmitting(false);
     }
